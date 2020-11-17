@@ -1,17 +1,14 @@
 """
     SORT: A Simple, Online and Realtime Tracker
     Copyright (C) 2016-2020 Alex Bewley alex@bewley.ai
-
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
@@ -217,7 +214,6 @@ class Sort(object):
       dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
     Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
     Returns the a similar array, where the last column is the object ID.
-
     NOTE: The number of objects returned may differ from the number of detections provided.
     """
         self.frame_count += 1
@@ -294,54 +290,48 @@ if __name__ == '__main__':
 
     if not os.path.exists('output'):
         os.makedirs('output')
-    # pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
-    # pattern = os.path.join(args.seq_path, phase)
-    data_srcs = glob.glob(os.path.join(args.seq_path, phase, "*"))
-    for data_src in data_srcs:
-        print("Processing", data_src.split('/')[-1])
-        # pattern = glob.glob(os.path.join(data_src, "*.txt"))
-        pattern = data_src
-        for seq_dets_fn in glob.glob(os.path.join(pattern, '*')):
-            mot_tracker = Sort(max_age=args.max_age,
-                               min_hits=args.min_hits,
-                               iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
-            seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
-            seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
+    pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
+    for seq_dets_fn in glob.glob(pattern):
+        mot_tracker = Sort(max_age=args.max_age,
+                           min_hits=args.min_hits,
+                           iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
+        seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
+        seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
 
-            with open('output/%s.txt' % (seq), 'w') as out_file:
-                print("Processing %s." % (seq))
-                for frame in range(int(seq_dets[:, 0].max())):
-                    frame += 1  # detection and frame numbers begin at 1
-                    dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
-                    dets[:, 2:4] += dets[:, 0:2]  # convert to [x1,y1,w,h] to [x1,y1,x2,y2]
-                    total_frames += 1
+        with open('output/%s.txt' % (seq), 'w') as out_file:
+            print("Processing %s." % (seq))
+            for frame in range(int(seq_dets[:, 0].max())):
+                frame += 1  # detection and frame numbers begin at 1
+                dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
+                dets[:, 2:4] += dets[:, 0:2]  # convert to [x1,y1,w,h] to [x1,y1,x2,y2]
+                total_frames += 1
 
+                if (display):
+                    fn = 'mot_benchmark/%s/%s/img1/%06d.jpg' % (phase, seq, frame)
+                    im = io.imread(fn)
+                    ax1.imshow(im)
+                    plt.title(seq + ' Tracked Targets')
+
+                start_time = time.time()
+                trackers = mot_tracker.update(dets)
+                cycle_time = time.time() - start_time
+                total_time += cycle_time
+
+                for d in trackers:
+                    print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
+                          file=out_file)
                     if (display):
-                        fn = 'mot_benchmark/%s/%s/img1/%06d.jpg' % (phase, seq, frame)
-                        im = io.imread(fn)
-                        ax1.imshow(im)
-                        plt.title(seq + ' Tracked Targets')
+                        d = d.astype(np.int32)
+                        ax1.add_patch(patches.Rectangle((d[0], d[1]), d[2] - d[0], d[3] - d[1], fill=False, lw=3,
+                                                        ec=colours[d[4] % 32, :]))
 
-                    start_time = time.time()
-                    trackers = mot_tracker.update(dets)
-                    cycle_time = time.time() - start_time
-                    total_time += cycle_time
+                if (display):
+                    fig.canvas.flush_events()
+                    plt.draw()
+                    ax1.cla()
 
-                    for d in trackers:
-                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
-                              file=out_file)
-                        if (display):
-                            d = d.astype(np.int32)
-                            ax1.add_patch(patches.Rectangle((d[0], d[1]), d[2] - d[0], d[3] - d[1], fill=False, lw=3,
-                                                            ec=colours[d[4] % 32, :]))
+    print("Total Tracking took: %.3f seconds for %d frames or %.1f FPS" % (
+    total_time, total_frames, total_frames / total_time))
 
-                    if (display):
-                        fig.canvas.flush_events()
-                        plt.draw()
-                        ax1.cla()
-
-        print("Total Tracking took: %.3f seconds for %d frames or %.1f FPS" % (
-        total_time, total_frames, total_frames / total_time))
-
-        if (display):
-            print("Note: to get real runtime results run without the option: --display")
+    if (display):
+        print("Note: to get real runtime results run without the option: --display")

@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     root_dir = "/home/kloping/OpenSet_MOT/TAO_eval/TAO_VAL_Proposals/nonOverlap_small/objectness/"
     # root_dir = "/storage/slurm/liuyang/TAO_eval/TAO_VAL_Proposals/A-Folder-containes-all-the-sequences/json/"
-    outdir = "/home/kloping/OpenSet_MOT/TAO_eval/forSORT/"
+    outdir = "/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT/"
     scoring = "objectness"
 
     data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
