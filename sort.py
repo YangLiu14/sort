@@ -27,7 +27,9 @@ import matplotlib.patches as patches
 from skimage import io
 
 import glob
+import shutil
 import time
+import tqdm
 import argparse
 from filterpy.kalman import KalmanFilter
 
@@ -216,7 +218,7 @@ class Sort(object):
     Params:
       dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
     Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
-    Returns the a similar array, where the last column is the object ID.
+    Returns ther a similar array, where the last column is the object ID.
 
     NOTE: The number of objects returned may differ from the number of detections provided.
     """
@@ -264,6 +266,7 @@ def parse_args():
                         action='store_true')
     parser.add_argument("--seq_path", help="Path to detections.", type=str, default='data')
     parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default='train')
+    parser.add_argument("--outdir", help="Output directory", type=str, default='output')
     parser.add_argument("--max_age",
                         help="Maximum number of frames to keep alive a track without associated detections.",
                         type=int, default=1)
@@ -283,7 +286,7 @@ if __name__ == '__main__':
     total_time = 0.0
     total_frames = 0
     colours = np.random.rand(32, 3)  # used only for display
-    if (display):
+    if display:
         if not os.path.exists('mot_benchmark'):
             print(
                 '\n\tERROR: mot_benchmark link not found!\n\n    Create a symbolic link to the MOT benchmark\n    (https://motchallenge.net/data/2D_MOT_2015/#download). E.g.:\n\n    $ ln -s /path/to/MOT2015_challenge/2DMOT2015 mot_benchmark\n\n')
@@ -292,24 +295,32 @@ if __name__ == '__main__':
         fig = plt.figure()
         ax1 = fig.add_subplot(111, aspect='equal')
 
-    if not os.path.exists('output'):
-        os.makedirs('output')
+    if not os.path.exists(args.outdir):
+        os.makedirs(args.outdir)
+    else:
+        shutil.rmtree(args.outdir, ignore_errors=True)
+        os.makedirs(args.outdir)
+
     # pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
     # pattern = os.path.join(args.seq_path, phase)
     data_srcs = glob.glob(os.path.join(args.seq_path, phase, "*"))
     for data_src in data_srcs:
+
+        if not os.path.exists(args.outdir + '/{}'.format(data_src.split('/')[-1])):
+            os.makedirs(args.outdir + '/{}'.format(data_src.split('/')[-1]))
+
         print("Processing", data_src.split('/')[-1])
         # pattern = glob.glob(os.path.join(data_src, "*.txt"))
         pattern = data_src
-        for seq_dets_fn in glob.glob(os.path.join(pattern, '*')):
+        for seq_dets_fn in tqdm.tqdm(glob.glob(os.path.join(pattern, '*'))):
             mot_tracker = Sort(max_age=args.max_age,
                                min_hits=args.min_hits,
                                iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
             seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
-            seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
+            seq = seq_dets_fn.split("/")[-1][:-4]
+            # seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
 
-            with open('output/%s.txt' % (seq), 'w') as out_file:
-                print("Processing %s." % (seq))
+            with open(args.outdir + '/{}/{}.txt'.format(data_src.split("/")[-1], seq), 'w') as out_file:
                 for frame in range(int(seq_dets[:, 0].max())):
                     frame += 1  # detection and frame numbers begin at 1
                     dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
