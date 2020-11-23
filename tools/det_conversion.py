@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     root_dir = "/home/kloping/OpenSet_MOT/TAO_eval/TAO_VAL_Proposals/nonOverlap_small/objectness/"
     # root_dir = "/storage/slurm/liuyang/TAO_eval/TAO_VAL_Proposals/A-Folder-containes-all-the-sequences/json/"
-    outdir = "/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT/"
+    outdir = "/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT_masks/val/"
     scoring = "objectness"
 
     data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
@@ -33,8 +33,12 @@ if __name__ == "__main__":
                         x1, y1, x2, y2 = prop['bbox']
                         # convert [x1, y1, x2, y2] to [x_left, y_left, w, c]
                         box = [x1, y1, x2-x1, y2-y1]
-                        # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
+                        mask = prop['instance_mask']
+                        img_h, img_w = mask['size']
+                        rle_str = mask['counts']
+                        # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>,
+                        # <x>, <y>, <z>, <img_h>, <img_w>, <rle_str>
                         string = ",".join([str(frame_id + 1), "-1", str(box[0]), str(box[1]), str(box[2]), str(box[3]),
-                                           str(prop[scoring]), "-1", "-1", "-1"])
+                                           str(prop[scoring]), "-1", "-1", "-1", str(img_h), str(img_w), rle_str])
                         f_txt.write(string + '\n')
             f_txt.close()
