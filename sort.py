@@ -83,8 +83,8 @@ def convert_bbox_to_z(bbox):
 
 def convert_x_to_bbox(x, score=None):
     """
-    Takes a bounding box in the centre form [x,y,s,r] and returns it in the form
-    [x1,y1,x2,y2] where x1,y1 is the top left and x2,y2 is the bottom right
+        Takes a bounding box in the centre form [x,y,s,r] and returns it in the form
+        [x1,y1,x2,y2] where x1,y1 is the top left and x2,y2 is the bottom right
     """
     w = np.sqrt(x[2] * x[3])
     h = x[2] / w
@@ -205,8 +205,8 @@ def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
 class Sort(object):
     def __init__(self, max_age=1, min_hits=3, iou_threshold=0.3):
         """
-    Sets key parameters for SORT
-    """
+        Sets key parameters for SORT
+        """
         self.max_age = max_age
         self.min_hits = min_hits
         self.iou_threshold = iou_threshold
@@ -215,13 +215,13 @@ class Sort(object):
 
     def update(self, dets=np.empty((0, 5))):
         """
-    Params:
-      dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
-    Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
-    Returns ther a similar array, where the last column is the object ID.
+        Params:
+          dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
+        Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 5)) for frames without detections).
+        Returns ther a similar array, where the last column is the object ID.
 
-    NOTE: The number of objects returned may differ from the number of detections provided.
-    """
+        NOTE: The number of objects returned may differ from the number of detections provided.
+        """
         self.frame_count += 1
         # get predicted locations from existing trackers.
         trks = np.zeros((len(self.trackers), 5))
@@ -316,7 +316,10 @@ if __name__ == '__main__':
             mot_tracker = Sort(max_age=args.max_age,
                                min_hits=args.min_hits,
                                iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
-            seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
+            # seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
+            seq_dets_wMask = np.loadtxt(seq_dets_fn, dtype='str', delimiter=',')  # proposals in all sequences with mask
+            seq_dets = seq_dets_wMask[:, :10].astype(np.float)
+            seq_masks = np.concatenate((seq_dets_wMask[:, 0:1], seq_dets_wMask[:, 10:]), axis=1)
             seq = seq_dets_fn.split("/")[-1][:-4]
             # seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
 
@@ -324,6 +327,7 @@ if __name__ == '__main__':
                 for frame in range(int(seq_dets[:, 0].max())):
                     frame += 1  # detection and frame numbers begin at 1
                     dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
+                    dets_mask = seq_masks[seq_masks[:, 0] == str(frame), :]
                     dets[:, 2:4] += dets[:, 0:2]  # convert to [x1,y1,w,h] to [x1,y1,x2,y2]
                     total_frames += 1
 
@@ -334,6 +338,11 @@ if __name__ == '__main__':
                         plt.title(seq + ' Tracked Targets')
 
                     start_time = time.time()
+                    # Append mask information to the end of dets
+                    placeholder = np.empty((dets.shape[0], 0), dtype=np.object)
+                    dets = np.append(placeholder, dets, axis=1)
+                    dets = np.append(dets, dets_mask, axis=1)
+
                     trackers = mot_tracker.update(dets)
                     cycle_time = time.time() - start_time
                     total_time += cycle_time

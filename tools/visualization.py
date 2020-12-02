@@ -134,25 +134,26 @@ def visualize_sequences(seq_id, tracks, max_frames_seq, img_folder, annot_frames
         ax = fig.subplots()
         ax.set_axis_off()
 
-        for obj in tracks[seq_id][t+1]:
-            color = colors[obj.track_id % len(colors)]
-            if obj.class_id == 1:
-                category_name = "object"
-            elif obj.class_id == 2:
-                category_name = "Pedestrian"
-            else:
-                category_name = "Ignore"
-                color = (0.7, 0.7, 0.7)
-            if obj.class_id == 1 or obj.class_id == 2:  # Don't show boxes or ids for ignore regions
-                x, y, w, h = obj.bbox
-                if draw_boxes:
-                    import matplotlib.patches as patches
-                    rect = patches.Rectangle((x, y), w, h, linewidth=1,
-                                             edgecolor=color, facecolor='none', alpha=1.0)
-                    ax.add_patch(rect)
-                category_name += ":" + str(obj.track_id)
-                ax.annotate(category_name, (x + 0.5 * w, y + 0.5 * h), color=color, weight='bold',
-                            fontsize=7, ha='center', va='center', alpha=1.0)
+        if t+1 in tracks[seq_id].keys():
+            for obj in tracks[seq_id][t+1]:
+                color = colors[obj.track_id % len(colors)]
+                if obj.class_id == 1:
+                    category_name = "obj"
+                elif obj.class_id == 2:
+                    category_name = "Pedestrian"
+                else:
+                    category_name = "Ignore"
+                    color = (0.7, 0.7, 0.7)
+                if obj.class_id == 1 or obj.class_id == 2:  # Don't show boxes or ids for ignore regions
+                    x, y, w, h = obj.bbox
+                    if draw_boxes:
+                        import matplotlib.patches as patches
+                        rect = patches.Rectangle((x, y), w, h, linewidth=1,
+                                                 edgecolor=color, facecolor='none', alpha=1.0)
+                        ax.add_patch(rect)
+                    category_name += ":" + str(obj.track_id)
+                    ax.annotate(category_name, (x + 0.5 * w, y + 0.5 * h), color=color, weight='bold',
+                                fontsize=7, ha='center', va='center', alpha=1.0)
 
         ax.imshow(img)
         if not os.path.exists(os.path.join(output_folder + "/" + seq_id)):
@@ -160,12 +161,11 @@ def visualize_sequences(seq_id, tracks, max_frames_seq, img_folder, annot_frames
         fig.savefig(output_folder + "/" + seq_id + "/" + frames_with_annotations[t])
         plt.close(fig)
 
-        if create_video:
-            os.chdir(output_folder + "/" + seq_id)
-            call(["ffmpeg", "-framerate", "10", "-y", "-i", "%06d.jpg", "-c:v", "libx264", "-profile:v", "high", "-crf",
-                  "20",
-                  "-pix_fmt", "yuv420p", "-vf", "pad=\'width=ceil(iw/2)*2:height=ceil(ih/2)*2\'", "output.mp4"])
-
+    if create_video:
+        os.chdir(output_folder + "/" + seq_id)
+        call(["ffmpeg", "-framerate", "10", "-y", "-i", "%06d.jpg", "-c:v", "libx264", "-profile:v", "high", "-crf",
+              "20",
+              "-pix_fmt", "yuv420p", "-vf", "pad=\'width=ceil(iw/2)*2:height=ceil(ih/2)*2\'", "output.mp4"])
 
 
 def main():
@@ -179,9 +179,10 @@ def main():
     # seqmap_filename = sys.argv[4]
 
     data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
-    tracks_folder = "/home/kloping/git-repos/sort/output2/" + data_srcs[2]
-    img_folder = "/home/kloping/OpenSet_MOT/data/TAO/TAO_VAL/val/" + data_srcs[2]
-    output_folder = "/home/kloping/OpenSet_MOT/Tracking/track_results/SORT/" + data_srcs[2]
+    curr_data_src = data_srcs[4]
+    tracks_folder = "/home/kloping/git-repos/sort/output_minhit0/" + curr_data_src
+    img_folder = "/home/kloping/OpenSet_MOT/data/TAO/TAO_VAL/val/" + curr_data_src
+    output_folder = "/home/kloping/OpenSet_MOT/Tracking/track_results/viz/SORT_minhit0/" + curr_data_src
     seqmap_filenames = sorted(glob.glob(tracks_folder + '/*' + '.txt'))
 
     # seqmap, max_frames = load_seqmap(seqmap_filename)
@@ -201,7 +202,7 @@ def main():
         max_frames[seq_name] = num_frames
 
     # Get the annotated frames in the current sequence.
-    txt_fname = "../data/tao/val_annotated_{}.txt".format(data_srcs[2])
+    txt_fname = "../data/tao/val_annotated_{}.txt".format(curr_data_src)
     with open(txt_fname) as f:
         content = f.readlines()
     content = ['/'.join(c.split('/')[1:]) for c in content]
