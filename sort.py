@@ -328,7 +328,7 @@ if __name__ == '__main__':
                     frame += 1  # detection and frame numbers begin at 1
                     dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
                     dets_mask = seq_masks[seq_masks[:, 0] == str(frame), :]
-                    dets[:, 2:4] += dets[:, 0:2]  # convert to [x1,y1,w,h] to [x1,y1,x2,y2]
+                    dets[:, 2:4] += dets[:, 0:2]  # convert [x1,y1,w,h] to [x1,y1,x2,y2]
                     total_frames += 1
 
                     if (display):
@@ -344,12 +344,23 @@ if __name__ == '__main__':
                     dets = np.append(dets, dets_mask, axis=1)
 
                     trackers = mot_tracker.update(dets)
+                    assert len(dets) == len(trackers)
                     cycle_time = time.time() - start_time
                     total_time += cycle_time
 
                     for d in trackers:
-                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
-                              file=out_file)
+                        for det in dets:
+                            if np.array_equal(d[:4], det[:4]):
+                                curr_mask = det[-3:]
+                                break
+                        # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
+                        # <img_h> <img_w> <rle>
+                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1, %d, %d, %s' % (
+                        frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1],
+                        int(curr_mask[0]), int(curr_mask[1]), curr_mask[2]), file=out_file)
+
+                        # print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
+                        #       file=out_file)
                         if (display):
                             d = d.astype(np.int32)
                             ax1.add_patch(patches.Rectangle((d[0], d[1]), d[2] - d[0], d[3] - d[1], fill=False, lw=3,

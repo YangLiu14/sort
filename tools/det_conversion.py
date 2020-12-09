@@ -1,3 +1,36 @@
+"""det_conversion.py
+Convert the detections originall given by the json format, into mot-format
+
+Input Folder Structure:
+    root_dir/
+        ArgoVerse/
+            video1/
+                frame1.json
+                frame2.json
+                ...
+            ...
+            videoN/
+        BDD/
+        Charades/
+        LaSOT/
+        YFCC100M/
+
+Output Folder Structure:
+    outdir/
+        ArgoVerse/
+            video1.txt
+            video2.txt
+            ...
+        BDD/
+        Charades/
+        LaSOT/
+        YFCC100M/
+
+
+slightly modified mot-format:
+<frame>, <track_id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>, <img_h> <img_w> <rle>
+"""
+import argparse
 import glob
 import json
 import os
@@ -5,11 +38,17 @@ import tqdm
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Detection Convertion')
+    parser.add_argument("--root_dir", help="Path to detections in json format.", type=str,
+                        default="/home/kloping/OpenSet_MOT/TAO_eval/TAO_VAL_Proposals/nonOverlap_small/objectness/")
+    parser.add_argument("--outdir", help="Output directory", type=str,
+                        default="/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT_masks/val/")
+    parser.add_argument("--scoring", required=True, help="which score to take", type=str)
+    args = parser.parse_args()
 
-    root_dir = "/home/kloping/OpenSet_MOT/TAO_eval/TAO_VAL_Proposals/nonOverlap_small/objectness/"
-    # root_dir = "/storage/slurm/liuyang/TAO_eval/TAO_VAL_Proposals/A-Folder-containes-all-the-sequences/json/"
-    outdir = "/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT_masks/val/"
-    scoring = "objectness"
+    root_dir = args.root_dir
+    outdir = args.outdir
+    scoring = args.scoring
 
     data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
     for data_src in data_srcs:
