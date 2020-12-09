@@ -20,8 +20,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import matplotlib
-
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from skimage import io
@@ -266,6 +265,7 @@ def parse_args():
                         action='store_true')
     parser.add_argument("--seq_path", help="Path to detections.", type=str, default='data')
     parser.add_argument("--phase", help="Subdirectory in seq_path.", type=str, default='train')
+    parser.add_argument("--datasrc", nargs='+', type=str)
     parser.add_argument("--outdir", help="Output directory", type=str, default='output')
     parser.add_argument("--max_age",
                         help="Maximum number of frames to keep alive a track without associated detections.",
@@ -304,6 +304,9 @@ if __name__ == '__main__':
     # pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
     # pattern = os.path.join(args.seq_path, phase)
     data_srcs = glob.glob(os.path.join(args.seq_path, phase, "*"))
+    if args.datasrc:
+        data_srcs = [src for src in data_srcs if src.split('/')[-1] in args.datasrc]
+
     for data_src in data_srcs:
 
         if not os.path.exists(args.outdir + '/{}'.format(data_src.split('/')[-1])):
@@ -312,22 +315,36 @@ if __name__ == '__main__':
         print("Processing", data_src.split('/')[-1])
         # pattern = glob.glob(os.path.join(data_src, "*.txt"))
         pattern = data_src
-        for seq_dets_fn in tqdm.tqdm(glob.glob(os.path.join(pattern, '*'))):
+        num_seq = len(glob.glob(os.path.join(pattern, '*')))
+        for seq_cnt, seq_dets_fn in enumerate(glob.glob(os.path.join(pattern, '*'))):
+            seq_cnt += 1
             mot_tracker = Sort(max_age=args.max_age,
                                min_hits=args.min_hits,
                                iou_threshold=args.iou_threshold)  # create instance of the SORT tracker
             # seq_dets = np.loadtxt(seq_dets_fn, delimiter=',')
-            seq_dets_wMask = np.loadtxt(seq_dets_fn, dtype='str', delimiter=',')  # proposals in all sequences with mask
-            seq_dets = seq_dets_wMask[:, :10].astype(np.float)
-            seq_masks = np.concatenate((seq_dets_wMask[:, 0:1], seq_dets_wMask[:, 10:]), axis=1)
+            # seq_dets_wMask = np.loadtxt(seq_dets_fn, dtype='str', delimiter=',')  # proposals in all sequences with mask
+            # seq_dets = seq_dets_wMask[:, :10].astype(np.float)
+            # seq_masks = np.concatenate((seq_dets_wMask[:, 0:1], seq_dets_wMask[:, 10:]), axis=1)
             seq = seq_dets_fn.split("/")[-1][:-4]
             # seq = seq_dets_fn[pattern.find('*'):].split('/')[0]
 
+            print("{}/{} Processing {}".format(seq_cnt, num_seq, seq))
+            # Using numpy to load all dets at once will cause memory overflow
+            with open(seq_dets_fn, 'r') as f:
+                contents = f.readlines()
+            max_frames = int(contents[-1].split(',')[0])
+
             with open(args.outdir + '/{}/{}.txt'.format(data_src.split("/")[-1], seq), 'w') as out_file:
-                for frame in range(int(seq_dets[:, 0].max())):
+                for frame in tqdm.tqdm(range(max_frames)):
                     frame += 1  # detection and frame numbers begin at 1
-                    dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
-                    dets_mask = seq_masks[seq_masks[:, 0] == str(frame), :]
+
+                    seq_dets_wMask = [line.split(',') for line in contents if int(line.split(',')[0]) == frame]
+                    seq_dets_wMask = np.array(seq_dets_wMask)
+                    dets = seq_dets_wMask[:, 2:7].astype(np.float)
+                    dets_mask = np.concatenate((seq_dets_wMask[:, 0:1], seq_dets_wMask[:, 10:]), axis=1)
+
+                    # dets = seq_dets[seq_dets[:, 0] == frame, 2:7]
+                    # dets_mask = seq_masks[seq_masks[:, 0] == str(frame), :]
                     dets[:, 2:4] += dets[:, 0:2]  # convert [x1,y1,w,h] to [x1,y1,x2,y2]
                     total_frames += 1
 
@@ -354,7 +371,7 @@ if __name__ == '__main__':
                                 curr_mask = det[-3:]
                                 break
                         # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
-                        # <img_h> <img_w> <rle>
+                        # <img_h>, <img_w>, <rle>
                         print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1, %d, %d, %s' % (
                         frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1],
                         int(curr_mask[0]), int(curr_mask[1]), curr_mask[2]), file=out_file)
