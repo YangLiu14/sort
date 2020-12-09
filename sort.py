@@ -295,11 +295,11 @@ if __name__ == '__main__':
         fig = plt.figure()
         ax1 = fig.add_subplot(111, aspect='equal')
 
-    if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir)
-    else:
-        shutil.rmtree(args.outdir, ignore_errors=True)
-        os.makedirs(args.outdir)
+    # if not os.path.exists(args.outdir):
+    #     os.makedirs(args.outdir)
+    # else:
+    #     shutil.rmtree(args.outdir, ignore_errors=True)
+    #     os.makedirs(args.outdir)
 
     # pattern = os.path.join(args.seq_path, phase, '*', 'det', 'det.txt')
     # pattern = os.path.join(args.seq_path, phase)
@@ -339,6 +339,8 @@ if __name__ == '__main__':
                     frame += 1  # detection and frame numbers begin at 1
 
                     seq_dets_wMask = [line.split(',') for line in contents if int(line.split(',')[0]) == frame]
+                    # check if all the bbox are valid: w > 0 and h > 0
+                    seq_dets_wMask = [det for det in seq_dets_wMask if (float(det[4]) > 0 and float(det[5]) > 0)]
                     seq_dets_wMask = np.array(seq_dets_wMask)
                     dets = seq_dets_wMask[:, 2:7].astype(np.float)
                     dets_mask = np.concatenate((seq_dets_wMask[:, 0:1], seq_dets_wMask[:, 10:]), axis=1)
