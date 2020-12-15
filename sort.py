@@ -371,11 +371,12 @@ if __name__ == '__main__':
                         for det in dets:
                             if np.array_equal(d[:4], det[:4]):
                                 curr_mask = det[-3:]
+                                curr_conf = det[4]
                                 break
                         # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
                         # <img_h>, <img_w>, <rle>
-                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1,%d,%d,%s' % (
-                        frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1],
+                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,%f,-1,-1,-1,%d,%d,%s' % (
+                        frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1], curr_conf,
                         int(curr_mask[0]), int(curr_mask[1]), curr_mask[2]), file=out_file)
 
                         # print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1]),
