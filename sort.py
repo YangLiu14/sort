@@ -372,7 +372,7 @@ if __name__ == '__main__':
                                 break
                         # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
                         # <img_h>, <img_w>, <rle>
-                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1, %d, %d, %s' % (
+                        print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1,%d,%d,%s' % (
                         frame, d[4], d[0], d[1], d[2] - d[0], d[3] - d[1],
                         int(curr_mask[0]), int(curr_mask[1]), curr_mask[2]), file=out_file)
 
