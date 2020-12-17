@@ -44,13 +44,15 @@ if __name__ == "__main__":
     parser.add_argument("--outdir", help="Output directory", type=str,
                         default="/home/kloping/OpenSet_MOT/Tracking/proposals/forSORT_masks/val/")
     parser.add_argument("--scoring", required=True, help="which score to take", type=str)
+    parser.add_argument("--datasrcs", nargs='+', required=True, help="which datasrcs to process", type=str)
     args = parser.parse_args()
 
     root_dir = args.root_dir
     outdir = args.outdir
     scoring = args.scoring
 
-    data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
+    # data_srcs = ["ArgoVerse", "BDD", "Charades", "LaSOT", "YFCC100M"]
+    data_srcs = args.datasrcs
     for data_src in data_srcs:
         print('Processing', data_src)
         videos = [fn.split('/')[-1] for fn in sorted(glob.glob(os.path.join(root_dir, data_src, '*')))]
