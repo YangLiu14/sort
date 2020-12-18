@@ -65,7 +65,7 @@ def iou_batch(bb_test, bb_gt):
     return (o)
 
 
-def convert_bbox_to_z(bbox):
+def  convert_bbox_to_z(bbox):
     """
     Takes a bounding box in the form [x1,y1,x2,y2] and returns z in the form
     [x,y,s,r] where x,y is the centre of the box and s is the scale/area and r is
@@ -236,25 +236,41 @@ class Sort(object):
             self.trackers.pop(t)
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets, trks, self.iou_threshold)
 
+        tracker_idx2box_idx = dict()   # Yang
         # update matched trackers with assigned detections
         for m in matched:
             self.trackers[m[1]].update(dets[m[0], :])
+            tracker_idx2box_idx[m[1]] = m[0]  # Yang
 
         # create and initialise new trackers for unmatched detections
+        tracker_last_idx = len(self.trackers)
         for i in unmatched_dets:
+            # Yang
+            tracker_idx2box_idx[tracker_last_idx] = i
+            tracker_last_idx += 1
+            # YANG
             trk = KalmanBoxTracker(dets[i, :])
             self.trackers.append(trk)
         i = len(self.trackers)
+
+        # Yang: Reverse the keys in tracker_idx2box_idx
+        ret_idx2det = dict()
+        r_idx = 0
+        # YANG
         for trk in reversed(self.trackers):
             d = trk.get_state()[0]
             if (trk.time_since_update < 1) and (trk.hit_streak >= self.min_hits or self.frame_count <= self.min_hits):
                 ret.append(np.concatenate((d, [trk.id + 1])).reshape(1, -1))  # +1 as MOT benchmark requires positive
+                # Yang
+                ret_idx2det[r_idx] = dets[tracker_idx2box_idx[i-1]]
+                r_idx += 1
+                # YANG
             i -= 1
             # remove dead tracklet
             if (trk.time_since_update > self.max_age):
                 self.trackers.pop(i)
         if (len(ret) > 0):
-            return np.concatenate(ret)
+            return np.concatenate(ret), ret_idx2det
         return np.empty((0, 5))
 
 
@@ -362,17 +378,18 @@ if __name__ == '__main__':
                     dets = np.append(placeholder, dets, axis=1)
                     dets = np.append(dets, dets_mask, axis=1)
 
-                    trackers = mot_tracker.update(dets)
+                    trackers, tracker_idx2det = mot_tracker.update(dets)
                     assert len(dets) == len(trackers)
                     cycle_time = time.time() - start_time
                     total_time += cycle_time
 
-                    for d in trackers:
-                        for det in dets:
-                            if np.array_equal(d[:4], det[:4]):
-                                curr_mask = det[-3:]
-                                curr_conf = det[4]
-                                break
+                    for t_idx, d in enumerate(trackers):
+                        # sanity check
+                        curr_bbox = np.array(tracker_idx2det[t_idx][:4])
+                        # assert np.abs((np.array(d[:4]) - curr_bbox)).any() < 5, "Idx doesn't match"
+                        curr_mask = tracker_idx2det[t_idx][-3:]
+                        curr_conf = tracker_idx2det[t_idx][4]
+
                         # <frame>, <id>, <bb_left>, <bb_top>, <bb_width>, <bb_height>, <conf>, <x>, <y>, <z>
                         # <img_h>, <img_w>, <rle>
                         print('%d,%d,%.2f,%.2f,%.2f,%.2f,%f,-1,-1,-1,%d,%d,%s' % (
